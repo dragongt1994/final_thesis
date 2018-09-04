@@ -26,7 +26,7 @@ class Screen(QWidget):
         #self.sck.send(str.encode("hello you are connected"))
     def startServer(self):
         print("serve")
-        self.serv=ServerManager("", 9000);
+        self.serv=ServerManager("", 9000);''
         self.serv.start()
     def sendMessage(self):
 #        mssg=int(self.message_type.text())
@@ -42,7 +42,7 @@ class Screen(QWidget):
             self.sck.send(m.buff)
             r=self.sck.recv(16)
             m=Message(buf=r)
-            c=open("rec.dat", "wb")
+            c=open("rec2.dat", "wb")
             if m.mssg_type==CONFI and m.comm_type==REQT_ACCELE:
                 print("recieving")
                 s3=int(m.value)
