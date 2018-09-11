@@ -20,6 +20,7 @@ class Screen(QWidget):
     
     def askConnection(self):
         print("try")
+        self.sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sck.connect((self.ip_addr.text(),int(self.port.text())))
         #self.sck.setblocking(0)
         print("connected")
@@ -111,6 +112,7 @@ class Screen(QWidget):
         
         self.label1=QtGui.QLabel("Ip Address")
         self.ip_addr=QtGui.QLineEdit()
+        self.ip_addr.setText("192.168.1.130")
         self.ip_lay=QtGui.QHBoxLayout()
         
         self.ip_lay.addWidget(self.label1)
@@ -119,6 +121,7 @@ class Screen(QWidget):
         
         self.label2=QtGui.QLabel("Port")
         self.port=QtGui.QLineEdit()
+        self.port.setText("9000")
         self.port_lay=QtGui.QHBoxLayout()
         
         self.port_lay.addWidget(self.label2)

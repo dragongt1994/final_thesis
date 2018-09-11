@@ -39,7 +39,7 @@ import com.jjoe64.graphview.series.LineGraphSeries;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    private Button conn_btn,graph_btn,sendgraph_btn,setpos_btn,getweight_btn, accel_btn,reset_btn;
+    private Button conn_btn,graph_btn,sendgraph_btn,setpos_btn,getweight_btn, accel_btn,reset_btn,reqt_list_btn;
     private EditText ip_addr,port_numb;
     private Spinner sigshape_sp,freq_sp,ampl_sp,time_sp,position_ed;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
@@ -107,6 +107,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         this.accel_btn.setOnClickListener(this);
         this.reset_btn=findViewById(R.id.reset_btn);
         this.reset_btn.setOnClickListener(this);
+
+        this.reqt_list_btn=findViewById(R.id.reqt_list);
 
         this.bgth =new SocketManager();
         this.qL=true;
@@ -357,9 +359,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         break;
                         case 9:this.customGraph();
                         break;
+
+                        case 10:this.requestlist();
+                        break;
                         }
                     }
                 }
+
+        }
+
+        private void requestlist() {
+            String temp;
+            String cont[];
+            this.msg=new Message(Mssg_Type.COMM,Comm_Type.REQT_SIGLIST,"0");
+            temp=msg.getBuff();
+            try {
+                //   out.write("hello");
+                out.flush();
+                Log.d("DebugMark",temp+" test");
+
+                out.write(temp);
+                out.flush();
+
+                out.newLine();
+                //this.publishProgress(this.PROC_REQT_WEIGHT);
+                out.flush();
+                temp=in.readLine();
+                Log.d("DebugMark",temp);
+                this.msg=new Message(temp);
+                if(this.msg.getMssgtype().equals(Mssg_Type.CONFI.toString()) && this.msg.getCommtype().equals(Comm_Type.REQT_SIGLIST.toString())){
+                    temp=in.readLine();
+                    cont=temp.split(",");
+                    Log.d("DebugMark","L= "+Integer.toString(cont.length));
+                    Log.d("DebugMark",cont[0]);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
         }
 
