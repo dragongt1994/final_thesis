@@ -11,8 +11,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,11 +24,15 @@ import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -37,11 +43,14 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    private Button conn_btn,graph_btn,sendgraph_btn,setpos_btn,getweight_btn, accel_btn,reset_btn;
+    private Button conn_btn,graph_btn,sendgraph_btn,setpos_btn,getweight_btn, accel_btn,reset_btn,request_btn,ftp_btn,exec_btn;
     private EditText ip_addr,port_numb;
-    private Spinner sigshape_sp,freq_sp,ampl_sp,time_sp,position_ed;
+    private Spinner sigshape_sp,freq_sp,ampl_sp,time_sp,position_ed,file_spinner;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -60,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private LineGraphSeries<DataPoint>mSeries;
     private Queue<Integer> queue;
 
-
+    private MainActivity temp;
 
 
     private ArrayList<Float> gr;
@@ -107,11 +116,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         this.accel_btn.setOnClickListener(this);
         this.reset_btn=findViewById(R.id.reset_btn);
         this.reset_btn.setOnClickListener(this);
+        this.request_btn=findViewById(R.id.request_list);
+        this.request_btn.setOnClickListener(this);
 
+        this.ftp_btn=findViewById(R.id.ftp_btn);
+        this.ftp_btn.setOnClickListener(this);
+
+        this.exec_btn=findViewById(R.id.exec_btn);
+        this.exec_btn.setOnClickListener(this);
         this.bgth =new SocketManager();
         this.qL=true;
         this.queue =new LinkedList<>();
 
+        this.file_spinner=findViewById(R.id.file_spinner);
 
         this.bgth.execute();
 
@@ -121,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 PERMISSIONS_STORAGE,
                 REQUEST_EXTERNAL_STORAGE
         );*/
-
+        temp=this;
 
         String s,s2;
         try {
@@ -159,6 +176,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         //series.
         //graph.addSeries(series);
+        FTPClient a;
     }
     public void hello()
     {
@@ -233,6 +251,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     new DataPoint(0,0)
             });
         }
+        else if(view.getId()==R.id.request_list){
+            this.queue.add(10);
+
+        }
+        else if(view.getId()==R.id.ftp_btn){
+            this.queue.add(11);
+        }
+        else if(view.getId()==R.id.exec_btn){
+            this.queue.add(12);
+
+
+        }
 
     }
 
@@ -255,8 +285,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         private final static int FIN_INIT_MACHINE=8;
 
         private final static int UPDATE_GRAPH=123;
+
+        private final static int UPDATE_FILELIST=9;
+
         private float weight,position;
         private TextView status_tv,weight_tv;
+
+        private ArrayAdapter<String> arr_str;
 
         public SocketManager()
         {
@@ -279,6 +314,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
+            int ctr;
             switch(values[0]){
                 case PROC_POS:
                     this.status_tv.setText("PROCESSING POSITION");
@@ -304,8 +340,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     this.status_tv.setText("Initializing Machine");
                 case FIN_INIT_MACHINE:
                     this.status_tv.setText("Machine Initialized");
+                    break;
                 case UPDATE_GRAPH:
-                    mSeries.appendData(new DataPoint(values[1]*0.1,gr.get(values[1])),false,gr.size());
+                Log.d("DebugMark","update graph");
+                    //graph.addSeries(mSeries);
+                 //mSeries.appendData(new DataPoint(values[1]* 0.1, gr.get(values[1])), false, gr.size());
+                    break;
+                case UPDATE_FILELIST:
+                    file_spinner.setAdapter(arr_str);
 
             }
 
@@ -327,41 +369,190 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             int ctr;
             int port;
 
-            String recv,send;
+            String recv, send;
             Integer t;
-            while(true) {
-                if(queue.size()>0) {
+            while (true) {
+                if (queue.size() > 0) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                     t = queue.remove();
-                    Log.d("DebugMark",t.toString());
+                    Log.d("DebugMark", t.toString());
                     switch (t) {
-                        case 1: this.initSockets();
-                        break;
-                        case 2:this.initMachine();
-                        break;
-                        case 3:this.SendData();
-                        break;
-                        case 4:this.SetPos(Integer.parseInt(position_ed.getSelectedItem().toString()));
-                        break;
-                        case 5:this.Reqt_Weight();
-                        break;
-                        case 6:this.Rtrv_Weight();
-                        break;
-                        case 7:this.Rtrv_Pos();
+                        case 1:
+                            this.initSockets();
                             break;
-                        case 8:this.getAccel();
-                        break;
-                        case 9:this.customGraph();
-                        break;
-                        }
+                        case 2:
+                            this.initMachine();
+                            break;
+                        case 3:
+                            this.SendData();
+                            break;
+                        case 4:
+                            this.SetPos(Integer.parseInt(position_ed.getSelectedItem().toString()));
+                            break;
+                        case 5:
+                            this.Reqt_Weight();
+                            break;
+                        case 6:
+                            this.Rtrv_Weight();
+                            break;
+                        case 7:
+                            this.Rtrv_Pos();
+                            break;
+                        case 8:
+                            this.getAccel();
+                            break;
+                        case 9:
+                            this.customGraph();
+                            break;
+                        case 10:
+                            Log.d("debugmark","here at get siglist");
+                            this.getSigList();
+                            break;
+                        case 11:
+                            this.filelist();
+                            break;
+                        case 12:
+                            String s=((TextView)((LinearLayout)file_spinner.getSelectedView()).getChildAt(0)).getText().toString();
+                            Log.d("debugmark","get "+((TextView)((LinearLayout)file_spinner.getSelectedView()).getChildAt(0)).getText());
+                            this.execSig(s);
                     }
                 }
+            }
+        }
+
+        private void execSig(String file) {
+            float value;
+
+            String temp;
+            this.msg=new Message(Mssg_Type.COMM,Comm_Type.EXEC_SIGNAL,file);
+            temp=this.msg.getBuff();
+            try {
+                //   out.write("hello");
+                out.flush();
+                Log.d("DebugMark",temp+" test");
+
+                out.write(temp);
+                out.flush();
+
+                out.newLine();
+                //this.publishProgress(this.PROC_REQT_WEIGHT);
+                out.flush();
+                temp=in.readLine();
+                Log.d("DebugMark",temp+" here");
+                this.msg=new Message(temp);
+                if(this.msg.getMssgtype().equals(Mssg_Type.CONFI.toString()) && this.msg.getCommtype().equals(Comm_Type.EXEC_SIGNAL)){
+                    Log.d("DebugMark","confirmed");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void filelist() {
+
+                    String proxyHost, proxyUser, proxyPassword;
+                    int proxyPort;
+                    proxyHost = "192.168.1.9";
+                    proxyPort = 21;
+                    proxyUser = "user1";
+                    proxyPassword = "123456";
+                    FTPClient client = new FTPClient();
+                    try {
+                        client.connect(proxyHost);
+                        client.login(proxyUser, proxyPassword);
+                        String reply = client.getStatus();
+                        String[] fileNames = client.listNames();
+                        //                      String jack[]={"mark","fda","fdf"};
+                        arr_str=new ArrayAdapter<String>(temp,R.layout.signal_pi_list,R.id.textView,fileNames);
+                        //a.addAll(jack);
+                        this.publishProgress(UPDATE_FILELIST);
+
+                        if (fileNames != null) {
+                            for (String file : fileNames) {
+                                Log.d("DebugMark", "f=" + file);
+
+                            }
+                        }
+                        File firstLocalFile = new File(Environment.getExternalStorageDirectory().getPath()+"/rec.dat");
+
+                        String firstRemoteFile = "rec2.csv";
+                        InputStream inputStream = new FileInputStream(firstLocalFile);
+
+                        client.setFileType(FTP.BINARY_FILE_TYPE);
+                        client.enterLocalPassiveMode();
+
+                        boolean p=client.storeFile(firstRemoteFile,inputStream);
+                        client.enterLocalPassiveMode();
+
+
+                        if(p){
+
+                            Log.d("DebugMark","success");
+                        }
+                        String remoteFilePath = "PeriodGraph-9-9-2018-7-48-7.dat";
+                        File localfile = new File(Environment.getExternalStorageDirectory().getPath()+"/downloaded2.csv");
+                        OutputStream outputStream = new FileOutputStream(localfile);
+                        client.setFileType(FTP.BINARY_FILE_TYPE);
+                        boolean success = client.retrieveFile(remoteFilePath, outputStream);
+                        outputStream.close();
+                        if(success){
+
+                            Log.d("DebugMark","success doownloaded");
+                        }
+                    } catch (Exception e) {
+                        Log.d("DebugMark", e.toString());
+                    }
+
+
+
+
 
         }
+
+
+        private void getSigList() {
+            float value;
+
+            String temp;
+            String cont[];
+            this.msg=new Message(Mssg_Type.COMM,Comm_Type.REQT_SIGLIST,"0");
+            temp=msg.getBuff();
+            try {
+                //   out.write("hello");
+                out.flush();
+                Log.d("DebugMark",temp+" test");
+
+                out.write(temp);
+                out.flush();
+
+                out.newLine();
+                //this.publishProgress(this.PROC_REQT_WEIGHT);
+                out.flush();
+                temp=in.readLine();
+                Log.d("DebugMark",temp);
+                this.msg=new Message(temp);
+                Log.d("DebugMark2",this.msg.getCommtype());
+                Log.d("DebugMark2",this.msg.getMssgtype());
+                if(this.msg.getMssgtype().equals(Mssg_Type.CONFI.toString()) && this.msg.getCommtype().equals(Comm_Type.REQT_SIGLIST.toString())){
+                    Log.d("DebugMark","confirmed");
+                    temp=in.readLine();
+
+                    cont=temp.split(",");
+
+                            Log.d("DebugMark","l= "+ cont.length);
+
+
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
 
         private void customGraph() {
             Log.d("DebugMark","customGraph");
@@ -417,7 +608,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             graph.getViewport().setYAxisBoundsManual(true);*/
             //graph.getViewport().setScalable(false);
 
-            graph.addSeries(mSeries);
+           // graph.addSeries(mSeries);
 
             try {
 
@@ -443,15 +634,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // a potentially  time consuming task
             div=(int)(Math.ceil(time*10/200));
             for(ctr=1;ctr<gr.size();ctr=div+ctr) {
-                try {
-                    Thread.sleep(10);
+               /* try {
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                }
-                this.publishProgress(UPDATE_GRAPH,ctr);
+                }*/
+                mSeries.appendData(new DataPoint(ctr* 0.1, gr.get(ctr)), false, gr.size());
+
                     //mSeries.appendData(new DataPoint(ctr*0.1,gr.get(ctr)),false,gr.size());
 
             }
+            graph.addSeries(mSeries);
+            this.publishProgress(UPDATE_GRAPH,ctr);
         }
 
         private void getAccel() {
@@ -685,7 +879,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             String temp;
             this.msg=new Message(Mssg_Type.COMM,Comm_Type.SETT_POSITION,Integer.toString(pos));
-            temp=msg.getBuff();
+            temp=this.msg.getBuff();
             try {
              //   out.write("hello");
                 out.flush();
