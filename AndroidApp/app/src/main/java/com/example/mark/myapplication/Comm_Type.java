@@ -20,7 +20,9 @@ public enum Comm_Type {
     REQT_POSITION("REQT_POSITION"),
     INIT_MACHINE("INIT_MACHINE"),
     RTRV_POSITION("RTRV_POSITION"),
-    RTRV_WEIGHT("RTRV_WEIGHT");
+    RTRV_WEIGHT("RTRV_WEIGHT"),
+    REQT_SIGLIST("REQT_SIGLIST"),
+    EXEC_SIGNAL("EXEC_SIGNAL");
     private final String text;
     Comm_Type(final String text) {
         this.text = text;
